@@ -76,16 +76,16 @@ jobs:
         if: always()
         run: |
           if [ -f trivy-results.json ]; then
-            echo "## 🔍 Trivy Security Scan Results" >> $GITHUB_STEP_SUMMARY
+            echo "## 🔍 Trivy 보안 취약점 스캔 결과" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
             
             VULN_COUNT=$(jq '[.Results[]?.Vulnerabilities[]?] | length' trivy-results.json)
             
             if [ "$VULN_COUNT" -gt 0 ]; then
-              echo "⚠️ Found **$VULN_COUNT** vulnerabilities (CRITICAL, HIGH)" >> $GITHUB_STEP_SUMMARY
+              echo "⚠️ **$VULN_COUNT개**의 취약점 발견 (CRITICAL, HIGH)" >> $GITHUB_STEP_SUMMARY
               echo "" >> $GITHUB_STEP_SUMMARY
-              echo "| Severity | Package | Installed | Fixed | Status | Title |" >> $GITHUB_STEP_SUMMARY
-              echo "|----------|---------|-----------|-------|--------|-------|" >> $GITHUB_STEP_SUMMARY
+              echo "| 심각도 | 패키지 | 설치된 버전 | 수정 버전 | 상태 | 제목 |" >> $GITHUB_STEP_SUMMARY
+              echo "|--------|--------|-------------|-----------|------|------|" >> $GITHUB_STEP_SUMMARY
               
               jq -r '.Results[]?.Vulnerabilities[]? | [.Severity, .PkgName, .InstalledVersion, (.FixedVersion // "N/A"), (.Status // "unknown"), .Title] | @tsv' trivy-results.json | \
               while IFS=$'\t' read -r severity pkg installed fixed status title; do
@@ -93,9 +93,9 @@ jobs:
               done
               
               echo "" >> $GITHUB_STEP_SUMMARY
-              echo "[View detailed results in Security tab](https://github.com/${{ github.repository }}/security/code-scanning)" >> $GITHUB_STEP_SUMMARY
+              echo "[Security 탭에서 상세 결과 보기](https://github.com/${{ github.repository }}/security/code-scanning/security/code-scanning?query=is%3Aopen+branch%3Atest-server+)" >> $GITHUB_STEP_SUMMARY
             else
-              echo "✅ No vulnerabilities found (CRITICAL, HIGH)" >> $GITHUB_STEP_SUMMARY
+              echo "✅ 취약점이 발견되지 않았습니다 (CRITICAL, HIGH)" >> $GITHUB_STEP_SUMMARY
             fi
           fi
 
