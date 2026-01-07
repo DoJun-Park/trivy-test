@@ -71,15 +71,22 @@ jobs:
           if [ "$VULN_COUNT" -gt 0 ]; then
             echo "::error title=취약점 발견::$VULN_COUNT개의 보안 취약점이 발견되었습니다 (CRITICAL, HIGH)"
             echo "⚠️ $VULN_COUNT개의 취약점 발견"
-            echo ""
-            echo "=== 발견된 취약점 목록 ==="
-            jq -r '.Results[]?.Vulnerabilities[]? | "\(.Severity) | \(.PkgName) \(.InstalledVersion) → \(.FixedVersion // \"N/A\") | \(.Title)"' trivy-results.json
-            echo ""
-            echo "💡 Summary 탭에서 전체 결과를 확인하세요"
+            echo "Security 탭에서 상세 결과 보기 : https://github.com/${{ github.repository }}/security/code-scanning?query=is%3Aopen+branch%3Atest-server+"
             exit 1
           else
             echo "✅ 취약점이 발견되지 않았습니다"
           fi
+
+      - name: Run Trivy for SARIF output
+        if: always()
+        uses: aquasecurity/trivy-action@0.33.1
+        with:
+          image-ref: trivy-test:${{ env.image_tag }}
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+          severity: 'CRITICAL,HIGH'
+          ignore-unfixed: true
+          exit-code: '0'
 
       - name: Generate vulnerability summary
         if: always()
@@ -102,7 +109,34 @@ jobs:
               done
               
               echo "" >> $GITHUB_STEP_SUMMARY
+              echo "[🔗 Security 탭에서 상세 결과 보기](https://github.com/${{ github.repository }}/security/code-scanning?query=is%3Aopen+branch%3Atest-server+)" >> $GITHUB_STEP_SUMMARY
             else
               echo "✅ 취약점이 발견되지 않았습니다 (CRITICAL, HIGH)" >> $GITHUB_STEP_SUMMARY
             fi
           fi
+
+      - name: Upload Trivy results to GitHub Security tab
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: 'trivy-results.sarif'
+
+      - name: Print Security tab link
+        if: always()
+        run: |
+          echo "::notice title=Security Scan Results::View results at https://github.com/${{ github.repository }}/security/code-scanning?query=is%3Aopen+branch%3Atest-server+"
+
+      # - name: Check and report vulnerabilities
+      #   if: always()
+      #   run: |
+      #     if [ -f trivy-results.sarif ]; then
+      #       VULN_COUNT=$(jq '.runs[0].results | length' trivy-results.sarif)
+      #       if [ "$VULN_COUNT" -gt 0 ]; then
+      #         echo "::warning title=Security Vulnerabilities Found::Found $VULN_COUNT vulnerabilities (CRITICAL, HIGH)"
+      #         echo "🔍 Trivy Security Scan Results"
+      #         echo "⚠️ Found $VULN_COUNT vulnerabilities (CRITICAL, HIGH)"
+      #         echo "View detailed results at: https://github.com/${{ github.repository }}/security/code-scanning?query=is%3Aopen+branch%3Atest-server+"  # test-server 브랜치에 대한 취약점 스캔 결과 링크
+      #       else
+      #         echo "✅ No vulnerabilities found"
+      #       fi
+      #     fi
