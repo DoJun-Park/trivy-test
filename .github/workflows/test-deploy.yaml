@@ -107,7 +107,7 @@ jobs:
 
       - name: Print Security tab link
         if: always()
-        run: |""
+        run: |
           echo "::notice title=Security Scan Results::View results at https://github.com/${{ github.repository }}/security/code-scanning/security/code-scanning?query=is%3Aopen+branch%3Atest-server+""
 
       - name: Check and report vulnerabilities
