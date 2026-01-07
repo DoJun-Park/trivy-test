@@ -1,4 +1,4 @@
-name: 설정_개발환경 배포
+name: 설정_개발환경 배포 (GHAS)
 on:
   workflow_dispatch:
   push:
