@@ -42,7 +42,7 @@ jobs:
 
       - name: Build Docker Image
         run: |
-          docker build \
+          DOCKER_BUILDKIT=0 docker build \
             -f ${{ env.DOCKER_PATH }} \
             -t trivy-test:${{ env.image_tag }} \
             -t trivy-test:latest \
