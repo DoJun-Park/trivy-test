@@ -12,7 +12,6 @@ env:
   BUILD_SERVICE_NAME: trivy-test
   NODE_VERSION: node-22
   DOCKER_PATH: ./Dockerfile
-  DOCKER_CONTEXT: .
 
 
 jobs:
@@ -42,12 +41,11 @@ jobs:
 
       - name: Build Docker Image
         run: |
-          docker context use default
           docker build \
             -f ${{ env.DOCKER_PATH }} \
             -t trivy-test:${{ env.image_tag }} \
             -t trivy-test:latest \
-            ${{ env.DOCKER_CONTEXT }}
+            .
       - name: Run Trivy vulnerability scanner
         uses: aquasecurity/trivy-action@0.33.1
         with:
