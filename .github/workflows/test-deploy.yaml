@@ -95,7 +95,7 @@ jobs:
               done
               
               echo "" >> $GITHUB_STEP_SUMMARY
-              echo "[Security 탭에서 상세 결과 보기](https://github.com/${{ github.repository }}/security/code-scanning/security/code-scanning?query=is%3Aopen+branch%3Atest-server+)" >> $GITHUB_STEP_SUMMARY
+              echo "[Security 탭에서 상세 결과 보기](https://github.com/${{ github.repository }}/security/code-scanning?query=is%3Aopen+branch%3Atest-server+)" >> $GITHUB_STEP_SUMMARY
             else
               echo "✅ 취약점이 발견되지 않았습니다 (CRITICAL, HIGH)" >> $GITHUB_STEP_SUMMARY
             fi
@@ -110,7 +110,7 @@ jobs:
       - name: Print Security tab link
         if: always()
         run: |
-          echo "::notice title=Security Scan Results::View results at https://github.com/${{ github.repository }}/security/code-scanning/security/code-scanning?query=is%3Aopen+branch%3Atest-server+"
+          echo "::notice title=Security Scan Results::View results at https://github.com/${{ github.repository }}/security/code-scanning?query=is%3Aopen+branch%3Atest-server+"
 
       - name: Check and report vulnerabilities
         if: always()
