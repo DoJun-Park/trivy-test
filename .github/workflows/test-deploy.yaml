@@ -69,13 +69,15 @@ jobs:
           VULN_COUNT=$(jq '[.Results[]?.Vulnerabilities[]?] | length' trivy-results.json)
           
           if [ "$VULN_COUNT" -gt 0 ]; then
-            echo "::error title=취약점 발견::$VULN_COUNT개의 보안 취약점이 발견되었습니다 (CRITICAL, HIGH)"
-            echo "⚠️ $VULN_COUNT개의 취약점 발견"
+            CRITICAL_COUNT=$(jq '[.Results[]?.Vulnerabilities[]? | select(.Severity=="CRITICAL")] | length' trivy-results.json)
+            HIGH_COUNT=$(jq '[.Results[]?.Vulnerabilities[]? | select(.Severity=="HIGH")] | length' trivy-results.json)
+            
+            echo "::error title=취약점 발견::$VULN_COUNT개의 보안 취약점이 발견되었습니다 (CRITICAL: $CRITICAL_COUNT, HIGH: $HIGH_COUNT)"
+            echo "❌ 보안 취약점 발견"
+            echo "   - CRITICAL: $CRITICAL_COUNT개"
+            echo "   - HIGH: $HIGH_COUNT개"
             echo ""
-            echo "=== 발견된 취약점 목록 ==="
-            jq -r '.Results[]?.Vulnerabilities[]? | "\(.Severity) | \(.PkgName) \(.InstalledVersion) → \(.FixedVersion // \"N/A\") | \(.Title)"' trivy-results.json
-            echo ""
-            echo "💡 Summary 탭에서 전체 결과를 확인하세요"
+            echo "📊 상세 정보: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
             exit 1
           else
             echo "✅ 취약점이 발견되지 않았습니다"
@@ -93,12 +95,12 @@ jobs:
             if [ "$VULN_COUNT" -gt 0 ]; then
               echo "⚠️ **$VULN_COUNT개**의 취약점 발견 (CRITICAL, HIGH)" >> $GITHUB_STEP_SUMMARY
               echo "" >> $GITHUB_STEP_SUMMARY
-              echo "| 심각도 | 패키지 | 설치된 버전 | 수정 버전 | 상태 | 제목 |" >> $GITHUB_STEP_SUMMARY
-              echo "|--------|--------|-------------|-----------|------|------|" >> $GITHUB_STEP_SUMMARY
+              echo "| 심각도 | CVE ID | 패키지 | 설치된 버전 | 수정 버전 | 제목 | 링크 |" >> $GITHUB_STEP_SUMMARY
+              echo "|--------|--------|--------|-------------|-----------|------|------|" >> $GITHUB_STEP_SUMMARY
               
-              jq -r '.Results[]?.Vulnerabilities[]? | [.Severity, .PkgName, .InstalledVersion, (.FixedVersion // "N/A"), (.Status // "unknown"), .Title] | @tsv' trivy-results.json | \
-              while IFS=$'\t' read -r severity pkg installed fixed status title; do
-                echo "| $severity | $pkg | $installed | $fixed | $status | $title |" >> $GITHUB_STEP_SUMMARY
+              jq -r '.Results[]?.Vulnerabilities[]? | [.Severity, .VulnerabilityID, .PkgName, .InstalledVersion, (.FixedVersion // "N/A"), .Title, .VulnerabilityID] | @tsv' trivy-results.json | \
+              while IFS=$'\t' read -r severity cve pkg installed fixed title vuln_id; do
+                echo "| $severity | $cve | $pkg | $installed | $fixed | $title | [링크](https://avd.aquasec.com/nvd/$vuln_id) |" >> $GITHUB_STEP_SUMMARY
               done
               
               echo "" >> $GITHUB_STEP_SUMMARY
