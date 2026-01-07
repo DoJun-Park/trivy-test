@@ -61,8 +61,10 @@ jobs:
           output: 'trivy-results.sarif'
           severity: 'CRITICAL,HIGH'
           ignore-unfixed: true
+          exit-code: '1'  # 취약점 발견 시 실패
 
       - name: Run Trivy for JSON output
+        if: always()
         uses: aquasecurity/trivy-action@0.33.1
         with:
           image-ref: trivy-test:${{ env.image_tag }}
