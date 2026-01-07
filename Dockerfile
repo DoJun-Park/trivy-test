@@ -9,7 +9,7 @@ RUN npm ci
 
 COPY . .
 
-FROM node:22.17.1-alpin
+FROM node:22.17.1-alpine
 
 RUN mkdir /usr/app
 WORKDIR /usr/app
