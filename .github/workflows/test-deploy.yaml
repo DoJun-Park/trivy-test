@@ -71,7 +71,7 @@ jobs:
           if [ "$VULN_COUNT" -gt 0 ]; then
             echo "::error title=취약점 발견::$VULN_COUNT개의 보안 취약점이 발견되었습니다 (CRITICAL, HIGH)"
             echo "⚠️ $VULN_COUNT개의 취약점 발견"
-            echo "[🔗 Security 탭에서 상세 결과 보기](https://github.com/${{ github.repository }}/security/code-scanning?query=is%3Aopen+branch%3Atest-server+)"
+            echo "Security 탭에서 상세 결과 보기 : https://github.com/${{ github.repository }}/security/code-scanning?query=is%3Aopen+branch%3Atest-server+"
             exit 1
           else
             echo "✅ 취약점이 발견되지 않았습니다"
