@@ -4,6 +4,9 @@ on:
   push:
     branches:
       - test-server
+  pull_request:
+    branches:
+      - test-server
 
 env:
   EKS_VERSION: 1.32
@@ -20,6 +23,7 @@ jobs:
     permissions:
       contents: read          # Required to checkout and read repo files
       security-events: write  # Required to upload SARIF files to Security tab
+      pull-requests: write    # Required to comment on pull requests
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -67,7 +71,7 @@ jobs:
       - name: Print Security tab link
         if: always()
         run: |
-          echo "::notice title=Security Scan Results::View results at https://github.com/${{ github.repository }}/security/code-scanning"
+          echo "::notice title=Security Scan Results::View results at https://github.com/${{ github.repository }}/security/code-scanning?query=is%3Aopen+branch%3Atest-server+" # test-server 브랜치에 대한 취약점 스캔 결과 링크
 
       - name: Check and report vulnerabilities
         if: always()
@@ -82,4 +86,36 @@ jobs:
             else
               echo "✅ No vulnerabilities found"
             fi
-          fi  
+          fi
+
+      - name: Comment PR with Trivy results
+        if: github.event_name == 'pull_request' && always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const sarifData = JSON.parse(fs.readFileSync('trivy-results.sarif', 'utf8'));
+            const results = sarifData.runs[0].results || [];
+            
+            if (results.length > 0) {
+              let comment = '## 🔍 Trivy Security Scan Results\n\n';
+              comment += `⚠️ Found **${results.length}** vulnerabilities (CRITICAL, HIGH)\n\n`;
+              comment += `[View detailed results in Security tab](https://github.com/${{ github.repository }}/security/code-scanning)\n`;
+              
+              await github.rest.issues.createComment({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: comment
+              });
+            } else {
+              let comment = '## ✅ Trivy Security Scan Results\n\n';
+              comment += 'No vulnerabilities found (CRITICAL, HIGH)\n';
+              
+              await github.rest.issues.createComment({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: comment
+              });
+            }  
