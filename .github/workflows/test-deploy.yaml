@@ -62,4 +62,24 @@ jobs:
         uses: github/codeql-action/upload-sarif@v3
         if: always()
         with:
-          sarif_file: 'trivy-results.sarif'  
+          sarif_file: 'trivy-results.sarif'
+
+      - name: Print Security tab link
+        if: always()
+        run: |
+          echo "::notice title=Security Scan Results::View results at https://github.com/${{ github.repository }}/security/code-scanning"
+
+      - name: Check and report vulnerabilities
+        if: always()
+        run: |
+          if [ -f trivy-results.sarif ]; then
+            VULN_COUNT=$(jq '.runs[0].results | length' trivy-results.sarif)
+            if [ "$VULN_COUNT" -gt 0 ]; then
+              echo "::warning title=Security Vulnerabilities Found::Found $VULN_COUNT vulnerabilities (CRITICAL, HIGH)"
+              echo "🔍 Trivy Security Scan Results"
+              echo "⚠️ Found $VULN_COUNT vulnerabilities (CRITICAL, HIGH)"
+              echo "View detailed results at: https://github.com/${{ github.repository }}/security/code-scanning"
+            else
+              echo "✅ No vulnerabilities found"
+            fi
+          fi  
