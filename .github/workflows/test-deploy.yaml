@@ -3,10 +3,10 @@ on:
   workflow_dispatch:
   push:
     branches:
-      - test-server
+      - test-serversssssss
   pull_request:
     branches:
-      - test-server
+      - test-serversssss
 
 env:
   EKS_VERSION: 1.32
