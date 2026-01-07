@@ -1,0 +1,53 @@
+name: 설정_개발환경 배포
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - test-server
+
+env:
+  EKS_VERSION: 1.32
+  SERVICE_NAME: trivy-test
+  DEPLOY_ENV: test
+  BUILD_SERVICE_NAME: trivy-test
+  NODE_VERSION: node-22
+  DOCKER_PATH: ./Dockerfile
+  DOCKER_CONTEXT: .
+
+
+jobs:
+  build:
+    runs-on: ubuntu-20.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js env
+        run: |
+          echo "NODE_HOME=/opt/${{ env.NODE_VERSION }}" >> $GITHUB_ENV
+          echo "PATH=$PATH:/opt/${{ env.NODE_VERSION }}/bin" >> $GITHUB_ENV
+
+      - name: Check Node version
+        run: node --version
+
+      - name: Set Short SHA
+        id: slug
+        run: echo "sha8=$(echo ${{ github.sha }} | cut -c1-8)" >> $GITHUB_OUTPUT
+      
+      - name: Set Image Tag
+        env:
+          IMAGE_TAG: ${{ steps.slug.outputs.sha8 }}
+        run: |
+          echo "image_tag=$IMAGE_TAG" >> $GITHUB_ENV
+
+      - name: Build Docker Image
+        uses: docker/build-push-action@v6
+        with:
+          context: "${{ env.DOCKER_CONTEXT }}"
+          file: "${{ env.DOCKER_PATH }}"
+          provenance: false
+          push: false
+          load: true
+          tags: |
+            trivy-test:${{ env.image_tag }}
+            trivy-test:latest
