@@ -69,8 +69,14 @@ jobs:
           VULN_COUNT=$(jq '[.Results[]?.Vulnerabilities[]?] | length' trivy-results.json)
           
           if [ "$VULN_COUNT" -gt 0 ]; then
-            echo "::error title=취약점 발견::$VULN_COUNT개의 보안 취약점이 발견되었습니다 (CRITICAL, HIGH)"
-            echo "⚠️ $VULN_COUNT개의 취약점 발견"
+            CRITICAL_COUNT=$(jq '[.Results[]?.Vulnerabilities[]? | select(.Severity=="CRITICAL")] | length' trivy-results.json)
+            HIGH_COUNT=$(jq '[.Results[]?.Vulnerabilities[]? | select(.Severity=="HIGH")] | length' trivy-results.json)
+
+            echo "::error title=취약점 발견::$VULN_COUNT개의 보안 취약점이 발견되었습니다 (CRITICAL: $CRITICAL_COUNT, HIGH: $HIGH_COUNT)"
+            echo "❌ 보안 취약점 발견"
+            echo "   - CRITICAL: $CRITICAL_COUNT개"
+            echo "   - HIGH: $HIGH_COUNT개"
+            echo ""
             echo "Security 탭에서 상세 결과 보기 : https://github.com/${{ github.repository }}/security/code-scanning?query=is%3Aopen+branch%3Atest-server+"
             exit 1
           else
@@ -100,16 +106,16 @@ jobs:
             if [ "$VULN_COUNT" -gt 0 ]; then
               echo "⚠️ **$VULN_COUNT개**의 취약점 발견 (CRITICAL, HIGH)" >> $GITHUB_STEP_SUMMARY
               echo "" >> $GITHUB_STEP_SUMMARY
-              echo "| 심각도 | 패키지 | 설치된 버전 | 수정 버전 | 상태 | 제목 |" >> $GITHUB_STEP_SUMMARY
-              echo "|--------|--------|-------------|-----------|------|------|" >> $GITHUB_STEP_SUMMARY
+              echo "| 심각도 | CVE ID | 패키지 | 설치된 버전 | 수정 버전 | 제목 |" >> $GITHUB_STEP_SUMMARY
+              echo "|--------|--------|--------|-------------|-----------|------|" >> $GITHUB_STEP_SUMMARY
               
-              jq -r '.Results[]?.Vulnerabilities[]? | [.Severity, .PkgName, .InstalledVersion, (.FixedVersion // "N/A"), (.Status // "unknown"), .Title] | @tsv' trivy-results.json | \
-              while IFS=$'\t' read -r severity pkg installed fixed status title; do
-                echo "| $severity | $pkg | $installed | $fixed | $status | $title |" >> $GITHUB_STEP_SUMMARY
+              jq -r '.Results[]?.Vulnerabilities[]? | [.Severity, .VulnerabilityID, .PkgName, .InstalledVersion, (.FixedVersion // "N/A"), .Title] | @tsv' trivy-results.json | \
+              while IFS=$'\t' read -r severity cve pkg installed fixed title; do
+                cve_lower=$(echo "$cve" | tr '[:upper:]' '[:lower:]')
+                echo "| $severity | [$cve](https://avd.aquasec.com/nvd/$cve_lower) | $pkg | $installed | $fixed | $title |" >> $GITHUB_STEP_SUMMARY
               done
               
               echo "" >> $GITHUB_STEP_SUMMARY
-              echo "[🔗 Security 탭에서 상세 결과 보기](https://github.com/${{ github.repository }}/security/code-scanning?query=is%3Aopen+branch%3Atest-server+)" >> $GITHUB_STEP_SUMMARY
             else
               echo "✅ 취약점이 발견되지 않았습니다 (CRITICAL, HIGH)" >> $GITHUB_STEP_SUMMARY
             fi
@@ -120,23 +126,3 @@ jobs:
         if: always()
         with:
           sarif_file: 'trivy-results.sarif'
-
-      - name: Print Security tab link
-        if: always()
-        run: |
-          echo "::notice title=Security Scan Results::View results at https://github.com/${{ github.repository }}/security/code-scanning?query=is%3Aopen+branch%3Atest-server+"
-
-      # - name: Check and report vulnerabilities
-      #   if: always()
-      #   run: |
-      #     if [ -f trivy-results.sarif ]; then
-      #       VULN_COUNT=$(jq '.runs[0].results | length' trivy-results.sarif)
-      #       if [ "$VULN_COUNT" -gt 0 ]; then
-      #         echo "::warning title=Security Vulnerabilities Found::Found $VULN_COUNT vulnerabilities (CRITICAL, HIGH)"
-      #         echo "🔍 Trivy Security Scan Results"
-      #         echo "⚠️ Found $VULN_COUNT vulnerabilities (CRITICAL, HIGH)"
-      #         echo "View detailed results at: https://github.com/${{ github.repository }}/security/code-scanning?query=is%3Aopen+branch%3Atest-server+"  # test-server 브랜치에 대한 취약점 스캔 결과 링크
-      #       else
-      #         echo "✅ No vulnerabilities found"
-      #       fi
-      #     fi
