@@ -1,12 +1,12 @@
-name: 설정_개발환경 배포 (GHAS)
+name: 설정_개발환경 배포 (Script)
 on:
   workflow_dispatch:
   push:
     branches:
-      - test-serversssssss
+      - test-server
   pull_request:
     branches:
-      - test-serversssssss
+      - test-server
 
 env:
   EKS_VERSION: 1.32
@@ -53,15 +53,20 @@ jobs:
             -t trivy-test:${{ env.image_tag }} \
             -t trivy-test:latest \
             .
-      - name: Run Trivy vulnerability scanner
-        uses: aquasecurity/trivy-action@0.33.1
-        with:
-          image-ref: trivy-test:${{ env.image_tag }}
-          format: 'json'
-          output: 'trivy-results.json'
-          severity: 'CRITICAL,HIGH'
-          ignore-unfixed: true
-          exit-code: '0'
+      
+      - name: Install Trivy
+        run: |
+          curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin v0.68.2
+          trivy --version
+
+      - name: Run Trivy vulnerability scanner (JSON)
+        run: |
+          trivy image \
+            --format json \
+            --output trivy-results.json \
+            --severity CRITICAL,HIGH \
+            --ignore-unfixed \
+            trivy-test:${{ env.image_tag }}
 
       - name: Check vulnerabilities and fail if found
         id: check_vulns
@@ -85,14 +90,13 @@ jobs:
 
       - name: Run Trivy for SARIF output
         if: always()
-        uses: aquasecurity/trivy-action@0.33.1
-        with:
-          image-ref: trivy-test:${{ env.image_tag }}
-          format: 'sarif'
-          output: 'trivy-results.sarif'
-          severity: 'CRITICAL,HIGH'
-          ignore-unfixed: true
-          exit-code: '0'
+        run: |
+          trivy image \
+            --format sarif \
+            --output trivy-results.sarif \
+            --severity CRITICAL,HIGH \
+            --ignore-unfixed \
+            trivy-test:${{ env.image_tag }}
 
       - name: Generate vulnerability summary
         if: always()
