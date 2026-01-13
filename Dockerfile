@@ -11,7 +11,7 @@ RUN apt-get update && \
 
 COPY package*.json ./
 
-RUN npm ci --only=production
+RUN npm install --only=production
 
 COPY index.js ./
 
