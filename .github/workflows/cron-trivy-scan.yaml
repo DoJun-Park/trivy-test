@@ -111,9 +111,6 @@ jobs:
           CRITICAL_COUNT=$(jq '[.Results[]?.Vulnerabilities[]? | select(.Severity=="CRITICAL")] | length' trivy-results.json)
           HIGH_COUNT=$(jq '[.Results[]?.Vulnerabilities[]? | select(.Severity=="HIGH")] | length' trivy-results.json)
           
-          # 상위 5개 취약점 추출
-          TOP_VULNS=$(jq -r '.Results[]?.Vulnerabilities[]? | "\(.Severity): \(.VulnerabilityID) - \(.PkgName)"' trivy-results.json | head -5 | sed 's/^/• /')
-          
           PAYLOAD=$(cat <<EOF
           {
             "text": "🚨 *Trivy 취약점 발견*",
@@ -134,15 +131,11 @@ jobs:
                   },
                   {
                     "type": "mrkdwn",
-                    "text": "*총 취약점:*\n$VULN_COUNT개"
+                    "text": "*Repository:*\n${{ github.repository }}"
                   },
                   {
                     "type": "mrkdwn",
-                    "text": "*CRITICAL:*\n$CRITICAL_COUNT개"
-                  },
-                  {
-                    "type": "mrkdwn",
-                    "text": "*HIGH:*\n$HIGH_COUNT개"
+                    "text": "*총 취약점:*\n$VULN_COUNT개 (CRITICAL: $CRITICAL_COUNT, HIGH: $HIGH_COUNT)"
                   }
                 ]
               },
@@ -150,14 +143,7 @@ jobs:
                 "type": "section",
                 "text": {
                   "type": "mrkdwn",
-                  "text": "*주요 취약점:*\n$TOP_VULNS"
-                }
-              },
-              {
-                "type": "section",
-                "text": {
-                  "type": "mrkdwn",
-                  "text": "<https://github.com/${{ github.repository }}/security/code-scanning?query=is%3Aopen+branch%3A${{ github.ref_name }}|Security 탭에서 전체 결과 보기>"
+                  "text": "<https://github.com/${{ github.repository }}/security/code-scanning|🔗 Security 탭에서 전체 결과 보기>"
                 }
               }
             ]
