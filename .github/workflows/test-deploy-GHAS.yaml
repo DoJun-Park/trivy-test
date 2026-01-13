@@ -72,6 +72,7 @@ jobs:
             CRITICAL_COUNT=$(jq '[.Results[]?.Vulnerabilities[]? | select(.Severity=="CRITICAL")] | length' trivy-results.json)
             HIGH_COUNT=$(jq '[.Results[]?.Vulnerabilities[]? | select(.Severity=="HIGH")] | length' trivy-results.json)
 
+            echo "has_vulns=true" >> $GITHUB_OUTPUT
             echo "::error title=취약점 발견::$VULN_COUNT개의 보안 취약점이 발견되었습니다 (CRITICAL: $CRITICAL_COUNT, HIGH: $HIGH_COUNT)"
             echo "❌ 보안 취약점 발견"
             echo "   - CRITICAL: $CRITICAL_COUNT개"
@@ -80,11 +81,12 @@ jobs:
             echo "Security 탭에서 상세 결과 보기 : https://github.com/${{ github.repository }}/security/code-scanning?query=is%3Aopen+branch%3A${{ github.ref_name }}"
             exit 1
           else
+            echo "has_vulns=false" >> $GITHUB_OUTPUT
             echo "✅ 취약점이 발견되지 않았습니다"
           fi
 
       - name: Run Trivy for SARIF output
-        if: always()
+        if: steps.check_vulns.outputs.has_vulns == 'true'
         uses: aquasecurity/trivy-action@0.33.1
         with:
           image-ref: trivy-test:${{ env.image_tag }}
@@ -123,6 +125,6 @@ jobs:
 
       - name: Upload Trivy results to GitHub Security tab
         uses: github/codeql-action/upload-sarif@v3
-        if: always()
+        if: steps.check_vulns.outputs.has_vulns == 'true'
         with:
           sarif_file: 'trivy-results.sarif'
