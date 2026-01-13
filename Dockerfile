@@ -1,33 +1,25 @@
-FROM node:18.12.0-alpine AS builder
+FROM ubuntu:24.04
 
-RUN mkdir /usr/app
-WORKDIR /usr/app
+WORKDIR /app
+
+RUN apt-get update && \
+    apt-get install -y curl && \
+    curl -fsSL https://deb.nodesource.com/setup_22.x | bash - && \
+    apt-get install -y nodejs && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
 
 COPY package*.json ./
 
-RUN npm install --production=false
+RUN npm install --only=production
 
-COPY . .
+COPY index.js ./
 
-FROM node:18.12.0-alpine
+RUN useradd -r -u 1001 nodejs && \
+    chown -R nodejs:nodejs /app
 
-RUN mkdir /usr/app
-WORKDIR /usr/app
-
-RUN apk add --no-cache tini tzdata
-RUN mkdir /var/log/nodejs
-RUN chown node:node /var/log/nodejs
-
-COPY --from=builder /usr/app/package*.json ./
-COPY --from=builder /usr/app/node_modules ./node_modules
-COPY --from=builder /usr/app/index.js ./
-
-RUN npm prune --omit=dev
-
-USER node
+USER nodejs
 
 EXPOSE 3000
-
-ENTRYPOINT ["/sbin/tini", "--"]
 
 CMD ["node", "index.js"]

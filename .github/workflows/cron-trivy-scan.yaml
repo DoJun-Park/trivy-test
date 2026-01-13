@@ -43,19 +43,21 @@ jobs:
             CRITICAL_COUNT=$(jq '[.Results[]?.Vulnerabilities[]? | select(.Severity=="CRITICAL")] | length' trivy-results.json)
             HIGH_COUNT=$(jq '[.Results[]?.Vulnerabilities[]? | select(.Severity=="HIGH")] | length' trivy-results.json)
 
+            echo "has_vulns=true" >> $GITHUB_OUTPUT
             echo "::error title=취약점 발견::$VULN_COUNT개의 보안 취약점이 발견되었습니다 (CRITICAL: $CRITICAL_COUNT, HIGH: $HIGH_COUNT)"
             echo "❌ 보안 취약점 발견"
             echo "   - CRITICAL: $CRITICAL_COUNT개"
             echo "   - HIGH: $HIGH_COUNT개"
             echo ""
-            echo "Security 탭에서 상세 결과 보기 : https://github.com/${{ github.repository }}/security/code-scanning"
+            echo "Security 탭에서 상세 결과 보기 : https://github.com/${{ github.repository }}/security/code-scanning?query=is%3Aopen+branch%3A${{ github.ref_name }}"
             exit 1
           else
+            echo "has_vulns=false" >> $GITHUB_OUTPUT
             echo "✅ 취약점이 발견되지 않았습니다"
           fi
 
       - name: Run Trivy for SARIF output
-        if: always()
+        if: steps.check_vulns.outputs.has_vulns == 'true'
         uses: aquasecurity/trivy-action@0.33.1
         with:
           image-ref: ${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}
@@ -96,6 +98,73 @@ jobs:
 
       - name: Upload Trivy results to GitHub Security tab
         uses: github/codeql-action/upload-sarif@v3
-        if: always()
+        if: steps.check_vulns.outputs.has_vulns == 'true'
         with:
-          sarif_file: 'trivy-results.sarif' 
+          sarif_file: 'trivy-results.sarif'
+
+      - name: Send Slack notification
+        if: steps.check_vulns.outputs.has_vulns == 'true'
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        run: |
+          VULN_COUNT=$(jq '[.Results[]?.Vulnerabilities[]?] | length' trivy-results.json)
+          CRITICAL_COUNT=$(jq '[.Results[]?.Vulnerabilities[]? | select(.Severity=="CRITICAL")] | length' trivy-results.json)
+          HIGH_COUNT=$(jq '[.Results[]?.Vulnerabilities[]? | select(.Severity=="HIGH")] | length' trivy-results.json)
+          
+          # 상위 5개 취약점 추출
+          TOP_VULNS=$(jq -r '.Results[]?.Vulnerabilities[]? | "\(.Severity): \(.VulnerabilityID) - \(.PkgName)"' trivy-results.json | head -5 | sed 's/^/• /')
+          
+          PAYLOAD=$(cat <<EOF
+          {
+            "text": "🚨 *Trivy 취약점 발견*",
+            "blocks": [
+              {
+                "type": "header",
+                "text": {
+                  "type": "plain_text",
+                  "text": "🚨 Trivy 보안 취약점 검사 결과"
+                }
+              },
+              {
+                "type": "section",
+                "fields": [
+                  {
+                    "type": "mrkdwn",
+                    "text": "*이미지:*\n\`${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}\`"
+                  },
+                  {
+                    "type": "mrkdwn",
+                    "text": "*총 취약점:*\n$VULN_COUNT개"
+                  },
+                  {
+                    "type": "mrkdwn",
+                    "text": "*CRITICAL:*\n$CRITICAL_COUNT개"
+                  },
+                  {
+                    "type": "mrkdwn",
+                    "text": "*HIGH:*\n$HIGH_COUNT개"
+                  }
+                ]
+              },
+              {
+                "type": "section",
+                "text": {
+                  "type": "mrkdwn",
+                  "text": "*주요 취약점:*\n$TOP_VULNS"
+                }
+              },
+              {
+                "type": "section",
+                "text": {
+                  "type": "mrkdwn",
+                  "text": "<https://github.com/${{ github.repository }}/security/code-scanning?query=is%3Aopen+branch%3A${{ github.ref_name }}|Security 탭에서 전체 결과 보기>"
+                }
+              }
+            ]
+          }
+          EOF
+          )
+          
+          curl -X POST "$SLACK_WEBHOOK_URL" \
+            -H 'Content-Type: application/json' \
+            -d "$PAYLOAD" 
