@@ -24,6 +24,7 @@ jobs:
       contents: read          # Required to checkout and read repo files
       security-events: write  # Required to upload SARIF files to Security tab
       pull-requests: write    # Required to comment on pull requests
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -82,7 +83,7 @@ jobs:
             echo "   - CRITICAL: $CRITICAL_COUNT개"
             echo "   - HIGH: $HIGH_COUNT개"
             echo ""
-            echo "Security 탭에서 상세 결과 보기 : https://github.com/${{ github.repository }}/security/code-scanning?query=is%3Aopen+branch%3Atest-server+"
+            echo "Security 탭에서 상세 결과 보기 : https://github.com/${{ github.repository }}/security/code-scanning?query=is%3Aopen+branch%3A${{ github.ref_name }}"
             exit 1
           else
             echo "✅ 취약점이 발견되지 않았습니다"
