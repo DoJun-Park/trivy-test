@@ -1,0 +1,32 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: trivy-db-race-TEST
+  namespace: default
+spec:
+  template:
+    spec:
+      nodeSelector:
+        nodegroup-type: ddocdoc-spot
+      restartPolicy: Never
+      containers:
+        - name: trivy
+          image: aquasec/trivy:0.68.2
+          env:
+            - name: TRIVY_CACHE_DIR
+              value: /cache/trivy
+          volumeMounts:
+            - name: trivy-db
+              mountPath: /cache/trivy/db
+          command:
+            - sh
+            - -c
+            - |
+              set -e
+              echo "start: $(date -u +%FT%TZ)"
+              trivy image alpine --skip-db-update
+              echo "end: $(date -u +%FT%TZ)"
+      volumes:
+        - name: trivy-db
+          persistentVolumeClaim:
+            claimName: trivy-db

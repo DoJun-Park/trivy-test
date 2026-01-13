@@ -1,4 +1,4 @@
-name: 설정_개발환경 배포
+name: 설정_개발환경 배포 (GHAS)
 on:
   workflow_dispatch:
   push:
@@ -6,7 +6,7 @@ on:
       - test-serversssssss
   pull_request:
     branches:
-      - test-serversssss
+      - test-serversssssss
 
 env:
   EKS_VERSION: 1.32
@@ -71,17 +71,28 @@ jobs:
           if [ "$VULN_COUNT" -gt 0 ]; then
             CRITICAL_COUNT=$(jq '[.Results[]?.Vulnerabilities[]? | select(.Severity=="CRITICAL")] | length' trivy-results.json)
             HIGH_COUNT=$(jq '[.Results[]?.Vulnerabilities[]? | select(.Severity=="HIGH")] | length' trivy-results.json)
-            
+
             echo "::error title=취약점 발견::$VULN_COUNT개의 보안 취약점이 발견되었습니다 (CRITICAL: $CRITICAL_COUNT, HIGH: $HIGH_COUNT)"
             echo "❌ 보안 취약점 발견"
             echo "   - CRITICAL: $CRITICAL_COUNT개"
             echo "   - HIGH: $HIGH_COUNT개"
             echo ""
-            echo "📊 상세 정보 (Summary 탭): ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+            echo "Security 탭에서 상세 결과 보기 : https://github.com/${{ github.repository }}/security/code-scanning?query=is%3Aopen+branch%3Atest-server+"
             exit 1
           else
             echo "✅ 취약점이 발견되지 않았습니다"
           fi
+
+      - name: Run Trivy for SARIF output
+        if: always()
+        uses: aquasecurity/trivy-action@0.33.1
+        with:
+          image-ref: trivy-test:${{ env.image_tag }}
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+          severity: 'CRITICAL,HIGH'
+          ignore-unfixed: true
+          exit-code: '0'
 
       - name: Generate vulnerability summary
         if: always()
@@ -109,3 +120,9 @@ jobs:
               echo "✅ 취약점이 발견되지 않았습니다 (CRITICAL, HIGH)" >> $GITHUB_STEP_SUMMARY
             fi
           fi
+
+      - name: Upload Trivy results to GitHub Security tab
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: 'trivy-results.sarif'
