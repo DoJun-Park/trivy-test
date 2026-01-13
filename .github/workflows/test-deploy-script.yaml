@@ -92,7 +92,7 @@ jobs:
           fi
 
       - name: Run Trivy for SARIF output
-        if: steps.check_vulns.outputs.has_vulns == 'true'
+        if: always() && steps.check_vulns.outputs.has_vulns == 'true'
         run: |
           trivy image \
             --format sarif \
@@ -130,6 +130,6 @@ jobs:
 
       - name: Upload Trivy results to GitHub Security tab
         uses: github/codeql-action/upload-sarif@v3
-        if: steps.check_vulns.outputs.has_vulns == 'true'
+        if: always() && steps.check_vulns.outputs.has_vulns == 'true'
         with:
           sarif_file: 'trivy-results.sarif'

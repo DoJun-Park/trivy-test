@@ -57,7 +57,7 @@ jobs:
           fi
 
       - name: Run Trivy for SARIF output
-        if: steps.check_vulns.outputs.has_vulns == 'true'
+        if: always() && steps.check_vulns.outputs.has_vulns == 'true'
         uses: aquasecurity/trivy-action@0.33.1
         with:
           image-ref: ${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}
@@ -98,12 +98,12 @@ jobs:
 
       - name: Upload Trivy results to GitHub Security tab
         uses: github/codeql-action/upload-sarif@v3
-        if: steps.check_vulns.outputs.has_vulns == 'true'
+        if: always() && steps.check_vulns.outputs.has_vulns == 'true'
         with:
           sarif_file: 'trivy-results.sarif'
 
       - name: Send Slack notification
-        if: steps.check_vulns.outputs.has_vulns == 'true'
+        if: always() && steps.check_vulns.outputs.has_vulns == 'true'
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
         run: |
