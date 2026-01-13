@@ -2,7 +2,7 @@ name: Trivy 정기 검사
 
 on:
   schedule:
-    - cron: "*/2 * * * *" # 매 2분마다 실행
+    - cron: "0 21 * * *" # 매일 KST 기준, 새벽 6시 실행
   workflow_dispatch: # 수동 실행 가능
 
 env:
