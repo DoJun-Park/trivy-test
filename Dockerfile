@@ -1,4 +1,4 @@
-FROM node:18.12.0-alpine AS builder
+FROM node:22-alpine AS builder
 
 RUN mkdir /usr/app
 WORKDIR /usr/app
@@ -9,7 +9,7 @@ RUN npm install --production=false
 
 COPY . .
 
-FROM node:18.12.0-alpine
+FROM node:22-alpine
 
 RUN mkdir /usr/app
 WORKDIR /usr/app
