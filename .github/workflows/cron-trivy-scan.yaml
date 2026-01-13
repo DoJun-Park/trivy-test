@@ -119,25 +119,15 @@ jobs:
                 "type": "header",
                 "text": {
                   "type": "plain_text",
-                  "text": "🚨 Trivy 보안 취약점 검사 결과"
+                  "text": "🚨 Trivy 이미지 보안 취약점 검사 결과"
                 }
               },
               {
                 "type": "section",
-                "fields": [
-                  {
-                    "type": "mrkdwn",
-                    "text": "*이미지:*\n\`${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}\`"
-                  },
-                  {
-                    "type": "mrkdwn",
-                    "text": "*Repository:*\n${{ github.repository }}"
-                  },
-                  {
-                    "type": "mrkdwn",
-                    "text": "*총 취약점:*\n$VULN_COUNT개 (CRITICAL: $CRITICAL_COUNT, HIGH: $HIGH_COUNT)"
-                  }
-                ]
+                "text": {
+                  "type": "mrkdwn",
+                  "text": "• *Repository:* ${{ github.repository }}\n\n• *취약점 발견 이미지:* \`${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}\`\n\n• *총 취약점:* $VULN_COUNT개 (CRITICAL: $CRITICAL_COUNT, HIGH: $HIGH_COUNT)"
+                }
               },
               {
                 "type": "section",
