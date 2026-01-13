@@ -1,0 +1,45 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: trivy-db-warmup
+  namespace: default
+spec:
+  schedule: "*/2 * * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          nodeSelector:
+            nodegroup-type: ddocdoc-spot
+          restartPolicy: Never
+          containers:
+            - name: trivy
+              image: aquasec/trivy:0.68.2
+              env:
+                - name: TRIVY_CACHE_DIR
+                  value: /cache/trivy
+              volumeMounts:
+                - name: trivy-db
+                  mountPath: /cache/trivy/db
+                - name: trivy-fanal
+                  mountPath: /cache/trivy/fanal
+              command:
+                - sh
+                - -c
+                - |
+                  set -e
+                  echo "== Trivy DB warm-up start =="
+                  trivy image alpine --quiet
+                  echo "== DB files =="
+                  ls -al /cache/trivy/db
+                  echo "== metadata.json =="
+                  cat /cache/trivy/db/metadata.json
+          volumes:
+            - name: trivy-db
+              persistentVolumeClaim:
+                claimName: trivy-db
+            - name: trivy-fanal
+              emptyDir: {}

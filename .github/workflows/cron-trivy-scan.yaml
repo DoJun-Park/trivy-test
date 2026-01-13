@@ -1,0 +1,101 @@
+name: Trivy 정기 검사
+
+on:
+  schedule:
+    - cron: "*/2 * * * *" # 매 2분마다 실행
+  workflow_dispatch: # 수동 실행 가능
+
+env:
+  IMAGE_NAME: public.ecr.aws/ddocdoc-public-registry/ddocdoc-hoppscotch
+  IMAGE_TAG: latest
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read          # Required to checkout and read repo files
+      security-events: write  # Required to upload SARIF files to Security tab
+      
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Pull latest image
+        run: |
+          docker pull ${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}
+      
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@0.33.1
+        with:
+          image-ref: ${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}
+          format: 'json'
+          output: 'trivy-results.json'
+          severity: 'CRITICAL,HIGH'
+          ignore-unfixed: true
+          exit-code: '0'
+
+      - name: Check vulnerabilities and fail if found
+        id: check_vulns
+        run: |
+          VULN_COUNT=$(jq '[.Results[]?.Vulnerabilities[]?] | length' trivy-results.json)
+          
+          if [ "$VULN_COUNT" -gt 0 ]; then
+            CRITICAL_COUNT=$(jq '[.Results[]?.Vulnerabilities[]? | select(.Severity=="CRITICAL")] | length' trivy-results.json)
+            HIGH_COUNT=$(jq '[.Results[]?.Vulnerabilities[]? | select(.Severity=="HIGH")] | length' trivy-results.json)
+
+            echo "::error title=취약점 발견::$VULN_COUNT개의 보안 취약점이 발견되었습니다 (CRITICAL: $CRITICAL_COUNT, HIGH: $HIGH_COUNT)"
+            echo "❌ 보안 취약점 발견"
+            echo "   - CRITICAL: $CRITICAL_COUNT개"
+            echo "   - HIGH: $HIGH_COUNT개"
+            echo ""
+            echo "Security 탭에서 상세 결과 보기 : https://github.com/${{ github.repository }}/security/code-scanning"
+            exit 1
+          else
+            echo "✅ 취약점이 발견되지 않았습니다"
+          fi
+
+      - name: Run Trivy for SARIF output
+        if: always()
+        uses: aquasecurity/trivy-action@0.33.1
+        with:
+          image-ref: ${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+          severity: 'CRITICAL,HIGH'
+          ignore-unfixed: true
+          exit-code: '0'
+
+      - name: Generate vulnerability summary
+        if: always()
+        run: |
+          if [ -f trivy-results.json ]; then
+            echo "## 🔍 Trivy 보안 취약점 스캔 결과" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "**이미지**: \`${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}\`" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            
+            VULN_COUNT=$(jq '[.Results[]?.Vulnerabilities[]?] | length' trivy-results.json)
+            
+            if [ "$VULN_COUNT" -gt 0 ]; then
+              echo "⚠️ **$VULN_COUNT개**의 취약점 발견 (CRITICAL, HIGH)" >> $GITHUB_STEP_SUMMARY
+              echo "" >> $GITHUB_STEP_SUMMARY
+              echo "| 심각도 | CVE ID | 패키지 | 설치된 버전 | 수정 버전 | 제목 |" >> $GITHUB_STEP_SUMMARY
+              echo "|--------|--------|--------|-------------|-----------|------|" >> $GITHUB_STEP_SUMMARY
+              
+              jq -r '.Results[]?.Vulnerabilities[]? | [.Severity, .VulnerabilityID, .PkgName, .InstalledVersion, (.FixedVersion // "N/A"), .Title] | @tsv' trivy-results.json | \
+              while IFS=$'\t' read -r severity cve pkg installed fixed title; do
+                cve_lower=$(echo "$cve" | tr '[:upper:]' '[:lower:]')
+                echo "| $severity | [$cve](https://avd.aquasec.com/nvd/$cve_lower) | $pkg | $installed | $fixed | $title |" >> $GITHUB_STEP_SUMMARY
+              done
+              
+              echo "" >> $GITHUB_STEP_SUMMARY
+            else
+              echo "✅ 취약점이 발견되지 않았습니다 (CRITICAL, HIGH)" >> $GITHUB_STEP_SUMMARY
+            fi
+          fi
+
+      - name: Upload Trivy results to GitHub Security tab
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: 'trivy-results.sarif' 
