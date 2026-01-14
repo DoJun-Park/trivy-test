@@ -3,10 +3,10 @@ on:
   workflow_dispatch:
   push:
     branches:
-      - test-server
+      - test-serversss
   pull_request:
     branches:
-      - test-server
+      - test-serversss
 
 env:
   EKS_VERSION: 1.32
@@ -53,7 +53,7 @@ jobs:
             -t trivy-test:${{ env.image_tag }} \
             -t trivy-test:latest \
             .
-      - name: Run Trivy vulnerability scanner
+      - name: Run Trivy vulnerability scanner (JSON)
         uses: aquasecurity/trivy-action@0.33.1
         with:
           image-ref: trivy-test:${{ env.image_tag }}

@@ -4,7 +4,7 @@ metadata:
   name: trivy-db-warmup
   namespace: default
 spec:
-  schedule: "*/2 * * * *"
+  schedule: "0 20 * * *" # 매일 KST 기준, 새벽 5시 실행
   concurrencyPolicy: Forbid
   successfulJobsHistoryLimit: 1
   failedJobsHistoryLimit: 3
